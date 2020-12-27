@@ -23,18 +23,13 @@ def insert_one(conn, table_name, field_values):
     insert = 'INSERT INTO "{}" ({}) values ({})'.format(table_name, columns, values)
     cur.mogrify(insert, field_values)
 
-    try:
-        cur.execute(insert, field_values)
-        conn.commit()
-    except IntegrityError as e:
-        conn.rollback()
-        raise mvc_exc.ItemAlreadyStored(
-            '{}: this key is already stored in table "{}"'.format(e, table_name))
+    cur.execute(insert, field_values)
+    conn.commit()
 
 
 def select_one(conn, table_name, key_name, key_value):
     cur = conn.cursor()
-    cur.execute('SELECT * FROM "{}" WHERE {} = %s'.format(table_name, key_name), (key_value,))
+    cur.execute('SELECT * FROM "{}" WHERE {} = %s LIMIT 1'.format(table_name, key_name), (key_value,))
     result = cur.fetchone()
     if result is not None:
         return result
@@ -50,11 +45,10 @@ def update_one(conn, table_name, key_change, new_val, key, key_val):
         .format(table_name, key)
     cur.execute(sql_check, (key_val,))
     result = cur.fetchone()
-    if result[0]:
+    if result is not None:
         cur.execute('UPDATE "{}" Set {} = %s WHERE {} = %s;'.format(table_name, key_change, key), (new_val, key_val))
         conn.commit()
     else:
-        conn.rollback()
         raise mvc_exc.ItemNotStored(
             'Can\'t update {} = {} because it\'s not stored in table "{}"'
                 .format(key, key_val, table_name))
@@ -67,11 +61,10 @@ def delete_one(conn, table_name, key_name, key_val):
     cur.execute(sql_check, (key_val,))
     result = cur.fetchone()
 
-    if result[0]:
+    if result is not None:
         cur.execute('DELETE FROM "{}" WHERE {} = %s'.format(table_name, key_name), (key_val,))
         conn.commit()
     else:
-        conn.rollback()
         raise mvc_exc.ItemNotStored(
             'Can\'t delete {} = {} because it\'s not stored in table "{}"'
                 .format(key_name, key_val, table_name))
@@ -121,7 +114,7 @@ def column_data(con, table_name, column_name):
         for val in cur.fetchall():
             values.append(*val)
         return values
-    except(Exception, psycopg2.DatabaseError) as error:
+    except(psycopg2.DatabaseError, Exception) as error:
         print(error)
 
 

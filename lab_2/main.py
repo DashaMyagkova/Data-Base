@@ -29,6 +29,9 @@ def task1(ctrl):
     print("Updating")
     print('Please enter key name of row to update')
     key_name = input()
+    while ctrl.check_for_present(key_name, table_name) is False:
+        print('Column name not found. Try again')
+        key_name = input()
     print('Please enter key value')
     key_val = input()
 
@@ -151,3 +154,4 @@ if __name__ == '__main__':
             task2(c)
         elif task == '3':
             task3(c)
+

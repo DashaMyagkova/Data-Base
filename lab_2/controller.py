@@ -1,3 +1,5 @@
+ import psycopg2
+
 import mvc_exceptions as mvc_exc
 
 
@@ -19,8 +21,11 @@ class Controller(object):
         try:
             self.model.create_item(table_name, field_values)
             self.view.display_item_stored(table_name, field_values)
-        except (mvc_exc.ItemAlreadyStored, Exception) as e:
+        except mvc_exc.ItemAlreadyStored as e:
             self.view.display_item_already_stored_error(table_name, e)
+        except psycopg2.Error as e:
+            self.model.connection.rollback()
+            print('Insert error. \nType: {} \nText: {}'.format(type(e), e))
 
     def update_item(self, table_name, key_change, new_val, key_name, key_val):
         try:
@@ -28,15 +33,21 @@ class Controller(object):
             self.model.update_item(table_name, key_change, new_val, key_name, key_val)
             new_item = self.model.read_item(table_name, key_name, key_val)
             self.view.display_item_updated(table_name, new_item, old_item)
-        except (mvc_exc.ItemNotStored, Exception) as e:
+        except mvc_exc.ItemNotStored as e:
             self.view.display_item_not_yet_stored_error(key_val, table_name, e)
+        except psycopg2.Error as e:
+            self.model.connection.rollback()
+            print('Update error. \nType: {} \nText: {}'.format(type(e), e))
 
     def delete_item(self, table_name, key_name, key_val):
         try:
             self.model.delete_item(table_name, key_name, key_val)
             self.view.display_item_deletion(table_name, key_val)
-        except (mvc_exc.ItemNotStored, Exception) as e:
+        except mvc_exc.ItemNotStored as e:
             self.view.display_item_not_yet_stored_error(key_val, table_name, e)
+        except psycopg2.Error as e:
+            self.model.connection.rollback()
+            print('Delete error. \nType: {} \nText: {}'.format(type(e), e))
 
     def get_columns(self, table_name):
         return self.model.get_columns(table_name)
@@ -101,4 +112,6 @@ class Controller(object):
         res = self.model.select_query(sql)
         print("dish_cnt, name_person, adress_person")
         print(res)
+
+
 
